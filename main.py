@@ -41,9 +41,14 @@ assets = {
                 'pencil':pygame.image.load(f'images/pencil_pressed.png').convert_alpha(),
                 'eraser':pygame.image.load(f'images/eraser_pressed.png').convert_alpha()
             }
+        },
+        'cursors':{
+            'add':pygame.image.load(f'images/cursor_add.png').convert_alpha(),
+            'kill':pygame.image.load(f'images/cursor_kill.png').convert_alpha(),
         }
     }
 }
+mouseSpriteRect = assets['images']['cursors']['add'].get_rect()
 # - Load assets - #
 
 # - Load controls - #
@@ -189,6 +194,7 @@ while replay:
 
         # - Game Logic - #
         # - Rendering - #
+            # - Layer Setup - #
         screen.fill((0,0,0))
         GuiLayer = pygame.Surface((display_width,display_height)).convert_alpha()
         GuiLayer.fill((0,0,0,0))
@@ -199,6 +205,12 @@ while replay:
             maxTileY = max(max([pos[1] for pos in Steps[step].keys()]),maxTileY)
         GameLayer = pygame.Surface((32*(maxTileX+1),32*(maxTileY+1))).convert_alpha()
         GameLayer.fill((0,0,0,0))
+            # - Layer Setup - #
+            # - Custom Cursor - #
+        if editing:
+            pygame.mouse.set_visible(False)
+            mouseSpriteRect.topleft = pygame.mouse.get_pos()
+            # - Custom Cursor - #
             # - Tiles - #
         for pos,tile in Steps[step].items():
             pygame.draw.rect(GameLayer,(200,200,200), pygame.Rect(32*pos[0], 32*pos[1], 32, 32))
@@ -231,6 +243,8 @@ while replay:
 
         screen.blit(GameLayer,(0-visibleTopLeft[0]*32,0-visibleTopLeft[1]*32))
         screen.blit(GuiLayer,(0,0))
+        if editing:
+            screen.blit(assets['images']['cursors'][editing],mouseSpriteRect)
         pygame.display.flip()
         # - Rendering - #
         if not paused:
@@ -242,4 +256,4 @@ while replay:
                     Tiles = Steps[step]
             frame += 1
             if frame > frameRate:
-                frame = 0
+                frame = 00
