@@ -1,11 +1,11 @@
 # - Imports - #
 from copy import deepcopy
 import pygame
+import pygame.freetype
 from os import environ as osEnviron
 
 # - Inits - #
 pygame.init()
-pygame.font.init()
 clock = pygame.time.Clock()
 
 # - Create window - #
@@ -49,6 +49,7 @@ assets = {
     }
 }
 mouseSpriteRect = assets['images']['cursors']['add'].get_rect()
+Font = pygame.freetype.Font("font.otf", 24)
 # - Load assets - #
 
 # - Load controls - #
@@ -64,17 +65,29 @@ frameRate = 60
 # - Tiles - #
 Tiles = {}
 class Tile():
-    def __init__(self,pos) -> None:
+    def __init__(self,pos,alive=True) -> None:
         global Tiles
         self.pos = pos
-        Tiles[self.pos] = self
+        self.alive = alive
     def kill(self):
         Tiles.pop(self.pos)
-def getTileAlive(pos: tuple):
+    def getNeighbors(self):
+        neighbors = []
+        for y in range(-1,2):
+            for x in range(-1,2):
+                neighbors.append(getTile((self.pos[0]+x,self.pos[1]+y)))
+        return neighbors
+    def getNeighborsAliveCount(self):
+        count = 0
+        for tile in self.getNeighbors():
+            if tile.alive:
+                count += 1
+        return count
+def getTile(pos: tuple):
     if pos in Tiles.keys():
         return Tiles[pos]
     else:
-        return None
+        return Tile(pos,False)
 def addTile(pos: tuple):
     Tiles[pos] = Tile(pos)
 # - Tiles - #
@@ -119,7 +132,7 @@ while replay:
     visibleTopLeft = (0,0)
     step = 0
     Steps = {0:deepcopy(Tiles)}
-    stepsPerSecond = 1
+    stepsPerSecond = 2
     frame = 0
     while running and not closed:
         clock.tick(frameRate)
@@ -146,17 +159,15 @@ while replay:
                         tilePos = (visibleTopLeft[0]+clickedTilePos[0],visibleTopLeft[1]+clickedTilePos[1])
                         if editing == 'add':
                             addTile(tilePos)
-                        elif getTileAlive(tilePos):
-                            getTileAlive(tilePos).kill()
+                        elif getTile(tilePos).alive:
+                            getTile(tilePos).kill()
             # - Input - # 
         # - Events - #
         # - Game Logic - #
             # -  Input - #
         for id,button in GuiButtons.items():
             if button.pressed:
-                if not id in ['pencil','eraser']:
-                    editing = False
-                else:
+                if id in ['pencil','eraser']:
                     editing = {'pencil':'add','eraser':'kill'}[id]
                 if id == 'back':
                     step -= 1
@@ -174,9 +185,10 @@ while replay:
                         Tiles = Steps[step]
                 if id == 'play':
                     paused = False
+                    frame = 0
+                    editing = False
                 else:
                     paused = True
-                    frame = 0
         if paused:
             GuiButtonsGroup.remove(GuiButtons['pause'].sprite)
             GuiButtonsGroup.add(GuiButtons['play'].sprite)
@@ -186,12 +198,15 @@ while replay:
         for id,button in GuiButtons.items():
             button.pressed = False
         # -  Input - #
+
+        if (not paused) and frame == 0:
+            for pos,tile in deepcopy(Tiles).items():
+                neighborsAlive = tile.getNeighborsAliveCount()
+                if neighborsAlive < 2 or neighborsAlive > 3:
+                    tile.kill()
         
         if not step in Steps.keys() or Steps[step] != Tiles:
             Steps[step] = deepcopy(Tiles)
-        if pygame.key.get_pressed()[pygame.K_SPACE]:
-            print(list(Steps[step].keys()))
-
         # - Game Logic - #
         # - Rendering - #
             # - Layer Setup - #
@@ -210,6 +225,8 @@ while replay:
         if editing:
             pygame.mouse.set_visible(False)
             mouseSpriteRect.topleft = pygame.mouse.get_pos()
+        else:
+            pygame.mouse.set_visible(True)
             # - Custom Cursor - #
             # - Tiles - #
         for pos,tile in Steps[step].items():
@@ -231,15 +248,10 @@ while replay:
         GuiButtonsGroup.draw(GuiLayer)
             # - GUI Bar - #
 
-        if editing == 'add':
-            pygame.draw.circle(GuiLayer,(0,255,0,128),(16,16),15)
-        elif editing == 'kill':
-            pygame.draw.circle(GuiLayer,(255,0,0,128),(16,16),15)
-        text_surface = my_font.render(str(step), False, (0, 0, 255))
-        GuiLayer.blit(text_surface,(display_width-text_surface.get_width(),0))
-        temp = text_surface.get_height()
-        text_surface = my_font.render(str(stepsPerSecond), False, (0, 0, 255))
-        GuiLayer.blit(text_surface,(display_width-text_surface.get_width(),temp))
+        textSurface, textRect = Font.render(f'step {step}', (0, 0, 255, 160))
+        GuiLayer.blit(textSurface, (display_width-1-textRect.width, 0))
+        textSurface, textRect = Font.render(f'{stepsPerSecond} steps/sec', (0, 0, 255, 160))
+        GuiLayer.blit(textSurface, (display_width-1-textRect.width, 33))
 
         screen.blit(GameLayer,(0-visibleTopLeft[0]*32,0-visibleTopLeft[1]*32))
         screen.blit(GuiLayer,(0,0))
@@ -248,12 +260,11 @@ while replay:
         pygame.display.flip()
         # - Rendering - #
         if not paused:
-            if frame == (frameRate // stepsPerSecond):
+            if frame >= (frameRate // stepsPerSecond):
+                frame = 0
                 step += 1
                 if not step in Steps.keys():
                     Steps[step] = deepcopy(Tiles)
                 else:
                     Tiles = Steps[step]
             frame += 1
-            if frame > frameRate:
-                frame = 00
