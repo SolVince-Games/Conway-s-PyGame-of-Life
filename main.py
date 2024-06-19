@@ -199,11 +199,11 @@ while replay:
             button.pressed = False
         # -  Input - #
 
-        if (not paused) and frame == 0:
-            for pos,tile in deepcopy(Tiles).items():
-                neighborsAlive = tile.getNeighborsAliveCount()
-                if neighborsAlive < 2 or neighborsAlive > 3:
-                    tile.kill()
+        # if (not paused) and frame == 0:
+        #     for pos,tile in deepcopy(Tiles).items():
+        #         neighborsAlive = tile.getNeighborsAliveCount()
+        #         if neighborsAlive < 2 or neighborsAlive > 3:
+        #             tile.kill()
         
         if not step in Steps.keys() or Steps[step] != Tiles:
             Steps[step] = deepcopy(Tiles)
