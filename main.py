@@ -218,7 +218,7 @@ while replay:
             copied = deepcopy(workingWithDict)
             for pos,tile in copied.items():
                 assert type(tile) == Tile
-                neighborsAlive = tile.getNeighborsAliveCount() # <-------- this is problem,, getting neighbors from actual Tiles dict
+                neighborsAlive = tile.getNeighborsAliveCount() # <-------- this is problem,, getting neighbors from actual Tiles dict, when should be getting neighbors from copied
                 if tile.alive:
                     if neighborsAlive < 2 or neighborsAlive > 3:
                         workingWithDict[pos].alive = False
