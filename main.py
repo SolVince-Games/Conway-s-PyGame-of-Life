@@ -75,7 +75,8 @@ class Tile():
         neighbors = []
         for y in range(-1,2):
             for x in range(-1,2):
-                neighbors.append(getTile((self.pos[0]+x,self.pos[1]+y)))
+                if x != 0 and y != 0:
+                    neighbors.append(getTile((self.pos[0]+x,self.pos[1]+y)))
         return neighbors
     def getNeighborsAliveCount(self):
         count = 0
@@ -151,16 +152,18 @@ while replay:
             if event.type == pygame.MOUSEBUTTONUP:
                 for button in GuiButtons.values():
                     button.pressed = button.sprite.rect.collidepoint(mousePos) and (button.sprite in GuiButtonsGroup.sprites())
-                    if button.pressed:
-                        print(f'{button.id} pressed!')
                 if editing:
                     clickedTilePos = (mousePos[0] // 32,mousePos[1] // 32)
                     if (clickedTilePos[0] >= 0 and clickedTilePos[0] < screenGridWidth) and (clickedTilePos[1] >= 0 and clickedTilePos[1] < screenGridHeight):
                         tilePos = (visibleTopLeft[0]+clickedTilePos[0],visibleTopLeft[1]+clickedTilePos[1])
                         if editing == 'add':
-                            addTile(tilePos)
-                        elif getTile(tilePos).alive:
-                            getTile(tilePos).kill()
+                            if not getTile(tilePos).alive:
+                                addTile(tilePos)
+                                Steps[step] = deepcopy(Tiles)
+                        elif editing == 'kill':
+                            if getTile(tilePos).alive:
+                                getTile(tilePos).kill()
+                                Steps[step] = deepcopy(Tiles)
             # - Input - # 
         # - Events - #
         # - Game Logic - #
@@ -172,15 +175,17 @@ while replay:
                 if id == 'back':
                     step -= 1
                     if step < 0: step = 0
-                    if not step in Steps.keys():
+                    if not (step in Steps.keys()):
                         Steps[step] = deepcopy(Tiles)
+                        print(f'overriding (back) step {step}')
                     else:
                         Tiles = Steps[step]
                 elif id == 'forward':
                     step += 1
                     if step < 0: step = 0
-                    if not step in Steps.keys():
+                    if not (step in Steps.keys()):
                         Steps[step] = deepcopy(Tiles)
+                        print(f'overriding (forward) step {step}')
                     else:
                         Tiles = Steps[step]
                 if id == 'play':
@@ -199,14 +204,33 @@ while replay:
             button.pressed = False
         # -  Input - #
 
-        # if (not paused) and frame == 0:
-        #     for pos,tile in deepcopy(Tiles).items():
-        #         neighborsAlive = tile.getNeighborsAliveCount()
-        #         if neighborsAlive < 2 or neighborsAlive > 3:
-        #             tile.kill()
-        
-        if not step in Steps.keys() or Steps[step] != Tiles:
-            Steps[step] = deepcopy(Tiles)
+        if (not paused) and frame == 0:
+            workingWith = list(deepcopy(Tiles).values())
+            for tile in deepcopy(workingWith):
+                assert type(tile) == Tile
+                for neighbor in tile.getNeighbors():
+                    assert type(neighbor) == Tile
+                    if not neighbor in workingWith:
+                        workingWith.append(neighbor)
+            workingWithDict = {}
+            for tile in workingWith:
+                workingWithDict[tile.pos] = tile
+            copied = deepcopy(workingWithDict)
+            for pos,tile in copied.items():
+                assert type(tile) == Tile
+                neighborsAlive = tile.getNeighborsAliveCount() # <-------- this is problem,, getting neighbors from actual Tiles dict
+                if tile.alive:
+                    if neighborsAlive < 2 or neighborsAlive > 3:
+                        workingWithDict[pos].alive = False
+                else:
+                    if neighborsAlive == 3:
+                        workingWithDict[pos].alive = True
+            for pos,tile in deepcopy(workingWithDict).items():
+                if not tile.alive:
+                    workingWithDict.pop(pos)
+            Steps[step+1] = deepcopy(workingWithDict)
+            print(f'overriding (3) step {step+1}')
+
         # - Game Logic - #
         # - Rendering - #
             # - Layer Setup - #
@@ -263,8 +287,9 @@ while replay:
             if frame >= (frameRate // stepsPerSecond):
                 frame = 0
                 step += 1
-                if not step in Steps.keys():
+                if not (step in Steps.keys()):
                     Steps[step] = deepcopy(Tiles)
+                    print(f'overriding (forward (natural)) step {step}')
                 else:
                     Tiles = Steps[step]
             frame += 1
